@@ -1,30 +1,24 @@
 ## To Run:
 First run
+    pip install -r requirements.txt
+To ensure all necessary libraries are installed. Then, 
     python load_data.py
-to create the .db file
-Then run 
+to create the .db file. Then run 
     python app.py
-which launches a server on your local machine. To access the application, go
-to any browser app (tested in google chrome) and access http://127.0.0.1:5000
-
-## Requirements
-- Python 3.10+
-- Flask
-- Pandas
-- SQLite3 (built‑in)
-- Plotly (for boxplots)
-- Chart.js (for bar charts)
+which launches a server on your local machine. 
+If running from your terminal access the application, in any browser app (tested in google chrome) with http://127.0.0.1:5000.
+From github codespace, it is easiest to go to the 'Ports' tab (right next to where it says terminal), where you will see it is
+forwarding the application. You can click on it to launch it in your browser.
 
 
 ## Answers for requested questions:
-The first page you will see has the summary table as described by part 2.
+The first page you will see has the summary table as described by part 2, with an added search feature.
 Aside from the summary table, the menu bar at the top of the page has tabs for the following:
 Statistical Analysis (part 3): Bar plot and associated significance stats
 Data Subset Analysis (part 4): the associated sums requested by part 4 of the analysis
 Subset Search: a page with fields for all associated variables included in each sample line.
-    Ex. if we select, Condition: melanoma, Treatment:miraclib, Sample Type: PBMC, Time From Treatment Start: 0
-    you will get the table view of the subset of patients that corresponds to part 4 for inspection or export.
-
+    Ex. if we select, Condition: melanoma, Treatment: miraclib, Sample Type: PBMC, Time From Treatment Start: 0
+    you will get the table view of the subset of patients that corresponds to part 4 for inspection and/or export.
 
 ## schema.sql
 5 tables organized in 3 'levels', creating a trident like shape: Project, Treatment 
