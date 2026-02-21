@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Data Overview (Part 2)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/">Data Overview (Part 2)</a>
+    <a href="/stats">Statistical Analysis (Part 3)</a>
+    <a href="/queries">Data Subset Analysis (Part 4)</a>
+    <a href="/search">General Search</a>
+</div>
+
+<h1>Cell Population Frequencies Per Sample</h1>
+
+<p>
+This table answers Bob’s first question:  
+<strong>“What is the frequency of each cell type in each sample?”</strong>
+</p>
+
+<h2>Search by Sample</h2>
+<input id="sampleSearch" placeholder="Enter sample code" oninput="debouncedFilter()">
+
+<h2>Summary Table</h2>
+<div id="summary-table"></div>
+
+<script>
+
+// make UI faster
+function debounce(func, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+
+let fullData = [];
+let filteredData = [];
+
+fetch("/api/summary")
+  .then(r => r.json())
+  .then(data => {
+      fullData = data;
+      filteredData = data;
+      renderTable(data);
+  });
+
+function renderTable(data) {
+    if (data.length === 0) {
+        document.getElementById("summary-table").innerHTML = "<p>No matching rows.</p>";
+        return;
+    }
+
+    let html = "<table><tr>";
+    html += "<th>Sample</th>";
+    html += "<th>Total Count</th>";
+    html += "<th>Population</th>";
+    html += "<th>Count</th>";
+    html += "<th>Percentage (%)</th>";
+    html += "</tr>";
+
+    // Build rows
+    let rows = "";
+    data.forEach(row => {
+        rows += "<tr>";
+        rows += `<td>${row.sample_code}</td>`;
+        rows += `<td>${row.total_count}</td>`;
+        rows += `<td>${row.population}</td>`;
+        rows += `<td>${row.count}</td>`;
+        rows += `<td>${row.percentage.toFixed(2)}</td>`;
+        rows += "</tr>";
+    });
+
+    html += rows + "</table>";
+    document.getElementById("summary-table").innerHTML = html;
+}
+
+// Filter by sample (debounced)
+function filterTable() {
+    const query = document.getElementById("sampleSearch").value.trim().toLowerCase();
+
+    if (query === "") {
+        filteredData = fullData;
+    } else {
+        filteredData = fullData.filter(row =>
+            row.sample_code.toLowerCase().includes(query)
+        );
+    }
+
+    renderTable(filteredData);
+}
+
+const debouncedFilter = debounce(filterTable, 150);
+</script>
+
+</body>
+</html>

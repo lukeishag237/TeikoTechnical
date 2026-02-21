@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>General Search</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/">Data Overview (Part 2)</a>
+    <a href="/stats">Statistical Analysis (Part 3)</a>
+    <a href="/queries">Data Subset Analysis (Part 4)</a>
+    <a href="/search">General Search</a>
+</div>
+
+<h1>General Data Search</h1>
+
+<p>Use the filters below to explore any subset of the dataset.</p>
+
+<h2>Filters</h2>
+
+<div id="filters">
+
+    <label>Project:</label>
+    <select id="project"><option value="">Any</option></select>
+
+    <label>Condition:</label>
+    <select id="condition"><option value="">Any</option></select>
+
+    <label>Age:</label>
+    <select id="age"><option value="">Any</option></select>
+
+    <label>Sex:</label>
+    <select id="sex"><option value="">Any</option></select>
+
+    <label>Treatment:</label>
+    <select id="treatment"><option value="">Any</option></select>
+
+    <label>Response:</label>
+    <select id="response"><option value="">Any</option></select>
+
+    <label>Sample Type:</label>
+    <select id="sample_type"><option value="">Any</option></select>
+
+    <label>Time From Treatment Start:</label>
+    <select id="time_from_treatment_start"><option value="">Any</option></select>
+
+    <label>Subject (text):</label>
+    <input id="subject">
+
+    <label>Sample (text):</label>
+    <input id="sample">
+
+    <button onclick="runQuery()">Search</button>
+    <button onclick="downloadCSV()">Download CSV</button>
+</div>
+
+<h2>Results</h2>
+<div id="results"></div>
+
+<script>
+// Store last query results for CSV export
+let lastResults = [];
+
+// Populate dropdowns dynamically
+fetch("/api/search_options")
+  .then(r => r.json())
+  .then(opts => {
+
+      function fill(id, arr) {
+          const sel = document.getElementById(id);
+          arr.forEach(v => {
+              const opt = document.createElement("option");
+              opt.value = v;
+              opt.textContent = v;
+              sel.appendChild(opt);
+          });
+      }
+
+      fill("project", opts.projects);
+      fill("condition", opts.conditions);
+      fill("age", opts.ages);
+      fill("sex", opts.sexes);
+      fill("treatment", opts.treatments);
+      fill("response", opts.responses);
+      fill("sample_type", opts.sample_types);
+      fill("time_from_treatment_start", opts.times);
+  });
+
+// Run search
+function runQuery() {
+    const params = new URLSearchParams();
+
+    // Dropdown fields
+    [
+        "project","condition","age","sex",
+        "treatment","response","sample_type",
+        "time_from_treatment_start"
+    ].forEach(field => {
+        const value = document.getElementById(field).value;
+        if (value) params.append(field, value);
+    });
+
+    // Free-text fields
+    ["subject", "sample"].forEach(field => {
+        const value = document.getElementById(field).value;
+        if (value) params.append(field, value);
+    });
+
+    fetch("/api/custom_query?" + params.toString())
+      .then(r => r.json())
+      .then(data => {
+
+          lastResults = data;   // save results for export
+
+          if (data.length === 0) {
+              document.getElementById("results").innerHTML = "<p>No results found.</p>";
+              return;
+          }
+
+          let html = "<table><tr>";
+          Object.keys(data[0]).forEach(k => html += `<th>${k}</th>`);
+          html += "</tr>";
+
+          data.forEach(row => {
+              html += "<tr>";
+              Object.values(row).forEach(v => html += `<td>${v}</td>`);
+              html += "</tr>";
+          });
+
+          html += "</table>";
+          document.getElementById("results").innerHTML = html;
+      });
+}
+
+// CSV EXPORT FUNCTION
+function downloadCSV() {
+    if (lastResults.length === 0) {
+        alert("No data to export. Run a search first.");
+        return;
+    }
+
+    const headers = Object.keys(lastResults[0]);
+    const rows = lastResults.map(obj => headers.map(h => JSON.stringify(obj[h] ?? "")));
+
+    let csv = headers.join(",") + "\n";
+    rows.forEach(r => csv += r.join(",") + "\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "query_results.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+</script>
+
+</body>
+</html>

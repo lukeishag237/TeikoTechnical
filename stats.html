@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Responder vs Non-Responder Stats</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/">Data Overview (Part 2)</a>
+    <a href="/stats">Statistical Analysis (Part 3)</a>
+    <a href="/queries">Data Subset Analysis (Part 4)</a>
+    <a href="/search">Subset Search</a>
+</div>
+
+<h1>Responder vs Non-Responder Frequencies</h1>
+
+<div id="boxplot" style="width:1000px;height:550px;margin:auto;"></div>
+
+<h2>Summary Statistics</h2>
+<div id="stats-table"></div>
+
+<script>
+fetch("/api/stats")
+  .then(r => r.json())
+  .then(data => {
+
+      const populations = [...new Set(data.map(d => d.population))];
+      const traces = [];
+      const stats = [];
+
+      // Helper functions
+      function mean(arr) {
+          return arr.reduce((a,b) => a+b, 0) / arr.length;
+      }
+
+      function median(arr) {
+          const s = [...arr].sort((a,b) => a-b);
+          const mid = Math.floor(s.length / 2);
+          return s.length % 2 ? s[mid] : (s[mid-1] + s[mid]) / 2;
+      }
+
+      function erf(x) {
+          const a1 = 0.254829592;
+          const a2 = -0.284496736;
+          const a3 = 1.421413741;
+          const a4 = -1.453152027;
+          const a5 = 1.061405429;
+          const p = 0.3275911;
+
+          const sign = x < 0 ? -1 : 1;
+          x = Math.abs(x);
+
+          const t = 1 / (1 + p * x);
+          const y = 1 - (((((a5*t + a4)*t + a3)*t + a2)*t + a1)*t*Math.exp(-x*x));
+
+          return sign * y;
+      }
+
+      function normalCDF(z) {
+          return (1 + erf(z / Math.sqrt(2))) / 2;
+      }
+
+      function mannWhitneyU(a, b) {
+          const combined = [...a.map(v => ({v, g: "a"})),
+                            ...b.map(v => ({v, g: "b"}))]
+                            .sort((x,y)=>x.v-y.v);
+
+          let rank = 1;
+          combined.forEach(o => o.rank = rank++);
+
+          const Ra = combined.filter(o => o.g==="a").reduce((s,o)=>s+o.rank,0);
+          const Rb = combined.filter(o => o.g==="b").reduce((s,o)=>s+o.rank,0);
+
+          const na = a.length;
+          const nb = b.length;
+
+          const Ua = Ra - (na*(na+1))/2;
+          const Ub = Rb - (nb*(nb+1))/2;
+
+          const U = Math.min(Ua, Ub);
+
+          const mu = na*nb/2;
+          const sigma = Math.sqrt(na*nb*(na+nb+1)/12);
+          const z = (U - mu) / sigma;
+
+          const p = 2 * (1 - normalCDF(Math.abs(z)));
+          return p;
+      }
+
+      // Build traces + stats
+      let firstResp = true;
+      let firstNon = true;
+
+      populations.forEach(pop => {
+
+          const resp = data
+              .filter(d => d.population === pop && d.response === "yes")
+              .map(d => d.percentage);
+
+          const nonresp = data
+              .filter(d => d.population === pop && d.response === "no")
+              .map(d => d.percentage);
+
+          // Paired boxplots
+          traces.push({
+              y: resp,
+              x: Array(resp.length).fill(pop),
+              name: "Responders",
+              type: "box",
+              marker: { color: "rgba(0,150,255,0.7)" },
+              boxpoints: false,
+              showlegend: firstResp
+          });
+          firstResp = false;
+
+          traces.push({
+              y: nonresp,
+              x: Array(nonresp.length).fill(pop),
+              name: "Non-Responders",
+              type: "box",
+              marker: { color: "rgba(255,100,100,0.7)" },
+              boxpoints: false,
+              showlegend: firstNon
+          });
+          firstNon = false;
+
+          // Compute stats
+          const pval = mannWhitneyU(resp, nonresp);
+
+          stats.push({
+              population: pop,
+              mean_resp: mean(resp).toFixed(2),
+              mean_non: mean(nonresp).toFixed(2),
+              med_resp: median(resp).toFixed(2),
+              med_non: median(nonresp).toFixed(2),
+              p_value: pval.toExponential(2)
+          });
+      });
+
+      // Render boxplot 
+      Plotly.newPlot("boxplot", traces, {
+          boxmode: "group",
+          boxgroupgap: 0.25,
+          boxgap: 0.4,
+          title: "Responder vs Non-Responder Immune Cell Frequencies",
+          yaxis: { title: "Relative Frequency (%)" },
+          xaxis: { title: "Cell Population" }
+      });
+
+      // Build stats table
+      let html = "<table><tr>" +
+                 "<th>Population</th>" +
+                 "<th>Mean (Resp)</th>" +
+                 "<th>Mean (Non)</th>" +
+                 "<th>Median (Resp)</th>" +
+                 "<th>Median (Non)</th>" +
+                 "<th>Mann–Whitney p-value</th>" +
+                 "</tr>";
+
+      stats.forEach(s => {
+          html += `<tr>
+              <td>${s.population}</td>
+              <td>${s.mean_resp}</td>
+              <td>${s.mean_non}</td>
+              <td>${s.med_resp}</td>
+              <td>${s.med_non}</td>
+              <td>${s.p_value}</td>
+          </tr>`;
+      });
+
+      html += "</table>";
+      document.getElementById("stats-table").innerHTML = html;
+  });
+</script>
+
+</body>
+</html>

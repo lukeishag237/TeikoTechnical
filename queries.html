@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Data Subset Analysis (Part 4)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+
+<div class="navbar">
+    <a href="/">Data Overview (Part 2)</a>
+    <a href="/stats">Statistical Analysis (Part 3)</a>
+    <a href="/queries">Data Subset Analysis (Part 4)</a>
+    <a href="/search">Subset Search</a>
+</div>
+
+<h1>Data Subset Analysis (Part 4)</h1>
+
+<p>
+This analysis identifies all <strong>melanoma PBMC samples at baseline</strong> from patients treated with <strong>miraclib</strong>, and summarizes:
+</p>
+
+<ul>
+    <li>Number of samples per project</li>
+    <li>Number of subjects who are responders vs non‑responders</li>
+    <li>Number of subjects who are male vs female</li>
+</ul>
+
+<h2>Results</h2>
+
+<div id="results"></div>
+
+<script>
+fetch("/api/subset_summary")
+  .then(r => r.json())
+  .then(data => {
+
+      let html = "<h3>Samples Per Project</h3><table><tr><th>Project</th><th>Sample Count</th></tr>";
+      for (const [project, count] of Object.entries(data.samples_per_project)) {
+          html += `<tr><td>${project}</td><td>${count}</td></tr>`;
+      }
+      html += "</table>";
+
+      html += `
+      <h3>Responder Status</h3>
+      <table>
+        <tr><th>Responders</th><td>${data.responders}</td></tr>
+        <tr><th>Non‑Responders</th><td>${data.nonresponders}</td></tr>
+      </table>
+      `;
+
+      html += `
+      <h3>Sex Distribution</h3>
+      <table>
+        <tr><th>Males</th><td>${data.males}</td></tr>
+        <tr><th>Females</th><td>${data.females}</td></tr>
+      </table>
+      `;
+
+      document.getElementById("results").innerHTML = html;
+  });
+</script>
+
+</body>
+</html>
